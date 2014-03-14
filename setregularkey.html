@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Set Regular Key</title>
+    <script src="http://cdn.jsdelivr.net/ripple/0.7.30/ripple-lib-min.js"></script>
+    <script>
+
+// Loading ripple-lib in a webpage
+var Remote = ripple.Remote;
+var Seed = ripple.Seed;
+
+var remote = new Remote({
+    // see the API Reference for available options
+    trusted:        false,
+    local_signing:  true,
+    local_fee:      true,
+    fee_cushion:     1.5,
+    servers: [
+        {
+            host:    's1.ripple.com'
+            , port:    443
+            , secure:  true
+        }
+    ]
+});
+
+function output(inp) {
+    document.body.appendChild(document.createElement('pre')).innerHTML = inp;
+}
+
+window.onload = function() {
+    var submitbutton = document.getElementById('submitbutton');
+    submitbutton.onclick = function() {submittoserver();};
+}
+
+function submittoserver() {
+    var REGULAR_KEY = document.getElementById('regularkey').value;
+    REGULAR_KEY = REGULAR_KEY.trim();
+    var MY_ADDRESS = document.getElementById('accountaddress').value;
+    MY_ADDRESS = MY_ADDRESS.trim();
+    var MY_SECRET = document.getElementById('accountsecret').value;
+    MY_SECRET = MY_SECRET.trim();
+
+
+    if (!Seed.from_json(MY_SECRET).is_valid()) {
+            output("Error: Secret invalid");
+            output("Transaction Not Submitted"); //stop here if seed is invalid.
+    }
+
+    else {
+
+          remote.connect(function() {
+             // remote connected
+             // see the API Reference for available functions
+      
+              var str;
+      
+              remote.set_secret(MY_ADDRESS, MY_SECRET);
+      
+              var transaction = remote.transaction();
+      
+              try {
+                  transaction.account_set(MY_ADDRESS);
+              } catch (error) {
+                  output(error);
+              }
+      
+              transaction.tx_json.TransactionType = 'SetRegularKey';
+              transaction.tx_json.RegularKey = REGULAR_KEY;
+
+
+              output("submiting transaction..."); //acknowledge of submission.
+
+              transaction.submit(function(err, res) {
+                  if (err) {
+                      str = JSON.stringify(err, undefined, 2);
+                  }
+                  if (res) {
+                      str = JSON.stringify(res, undefined, 2);
+                  }
+                  output(str);
+                  remote.disconnect();
+              }); 
+  
+        });
+    }
+    
+}
+
+    </script>
+  </head>
+  <body>
+    <h1>Set Regular Key</h1>
+    Account address:
+    <input id="accountaddress" type=text
+           value="rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh" size=40><br>
+    Account secret:
+    <input id="accountsecret" type=text
+           value="snoPBrXtMeMyMHUVTgbuqAfg1SUTb" size=40><br>
+    New Regulare-key:
+    <input id="regularkey" type=text
+           value="rfe8yiZUymRPx35BEwGjhfkaLmgNsTytxT" size=40><br>
+    <button id="submitbutton">Submit</button>
+  </body>
+</html>
