@@ -2,14 +2,13 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Disable Masterkey</title>
-    <script src="file:///home/tanhanbin/ripple-lib/build/ripple-0.7.34-min.js"></script>
+    <title>Flag - Disable Masterkey</title>
+    <script src="http://cdn.jsdelivr.net/ripple/0.7.30/ripple-lib-min.js"></script>
     <script>
 
 // Loading ripple-lib in a webpage
 var Remote = ripple.Remote;
 var Seed = ripple.Seed;
-var Currency = ripple.Currency;
 var UInt160 = ripple.UInt160;
 
 var remote = new Remote({
@@ -34,9 +33,6 @@ function output(inp) {
 window.onload = function() {
     var submitbutton = document.getElementById('submitbutton');
     submitbutton.onclick = function() {submittoserver();};
-
-    var checkdisable = document.getElementById('disablemaster');
-    checkdisable.check = function() {diablemaster();};
 }
 
 function submittoserver() {
@@ -47,60 +43,62 @@ function submittoserver() {
     MY_SECRET = MY_SECRET.trim();
 
 
+    // validating seeds and address
+
+    if (!Seed.from_json(MY_SECRET).is_valid()) {
+        output("Error: invalid seed");
+	return;
+    } 
+
+    if (!UInt160.is_valid(MY_ADDRESS)) {
+        output("Error: invalid address");
+	return;
+    }
+
+
+    output("contructing transaction...");
     remote.connect(function() {
-        // remote connected
+	// remote connected
 
-        // see the API Reference for available functions
+	// see the API Reference for available functions
+
+	remote.set_secret(MY_ADDRESS, MY_SECRET);
+
+	var transaction = remote.transaction();
+
+	try {
+	    transaction.account_set(MY_ADDRESS);
+	} catch (error) {
+	    output(error);
+	}
 
 
-        if (!Seed.from_json(MY_SECRET).is_valid()) {
-            output("Error: Secret invalid");
-        }
-/*
-        if (!Currency.from_json(c_code).is_valid()) {
-            output("Error: Currency code invalid");
-        }
+	if (document.getElementById('disablemaster').checked) {
+	    transaction.tx_json.SetFlag = 4;
+	} else {
+	    transaction.tx_json.ClearFlag = 4;
+	}
 
-        if (!UInt160.is_valid(ISSUER_ADDRESS)) {
-            output("Error: Issuer address invalid");
-        }
-*/
-        remote.set_secret(MY_ADDRESS, MY_SECRET);
-
-        var transaction = remote.transaction();
-
-        try {
-            transaction.account_set(MY_ADDRESS);
-        } catch (error) {
-            output(error);
-        }
-
-//	transaction.tx_json.TransactionType  = 'AccountSet'
-
-        if (document.getElementById('disablemaster').checked) {
-            transaction.tx_json.SetFlag = 4;
-        } else {
-            transaction.tx_json.ClearFlag = 4;
-        }
-
-        transaction.submit(function(err, res) {
-            if (err) {
-                str = JSON.stringify(err, undefined, 2);
-            }
-            if (res) {
-                str = JSON.stringify(res, undefined, 2);
-            }
-            output(str);
-            remote.disconnect();
-        });
+	output("submitting transaction...");
+	transaction.submit(function(err, res) {
+	    if (err) {
+		str = JSON.stringify(err, undefined, 2);
+	    }
+	    if (res) {
+		str = JSON.stringify(res, undefined, 2);
+	    }
+	    output(str);
+	    remote.disconnect();
+	});
 
     });
+
 }
 
     </script>
   </head>
   <body>
-    <h1>Set Flag - Disable Masterkey</h1>
+    <h1>Set/Clear Flag - Disable Masterkey</h1>
     Account address:
     <input id="accountaddress" type=text
            value="rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh" size=40><br>
@@ -108,8 +106,8 @@ function submittoserver() {
     <input id="accountsecret" type=text
            value="snoPBrXtMeMyMHUVTgbuqAfg1SUTb" size=40><br>
 
-    <input id="disablemaster" type=checkbox unchecked>Disable use of Masterkey. (RegularKey must be set). <br>
-    <input id="enablemaster" type=checkbox checked>Enable use of Masterkey. <br>
+    <input id="disablemaster" type=radio name="masterkey" unchecked>Disable use of Masterkey. (Warning: Make sure you had Backup the secret-key of the RegularID). <br>
+    <input id="enablemasterr" type=radio name="masterkey" checked>Enable use of Masterkey. <br>
 
     <button id="submitbutton">Submit</button>
   </body>
