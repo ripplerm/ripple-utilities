@@ -9,6 +9,7 @@
 // Loading ripple-lib in a webpage
 var Remote = ripple.Remote;
 var Seed = ripple.Seed;
+var UInt160 = ripple.UInt160;
 
 var remote = new Remote({
     // see the API Reference for available options
@@ -43,48 +44,55 @@ function submittoserver() {
     MY_SECRET = MY_SECRET.trim();
 
 
+     // validating seed and address
+
     if (!Seed.from_json(MY_SECRET).is_valid()) {
-            output("Error: Secret invalid");
-            output("Transaction Not Submitted"); //stop here if seed is invalid.
+        output("Error: invalid seed");
+	      return;
+    } 
+
+    if (!UInt160.is_valid(MY_ADDRESS)) {
+        output("Error: invalid address");
+	      return;
     }
 
-    else {
 
-          remote.connect(function() {
-             // remote connected
-             // see the API Reference for available functions
-      
-              var str;
-      
-              remote.set_secret(MY_ADDRESS, MY_SECRET);
-      
-              var transaction = remote.transaction();
-      
-              try {
-                  transaction.account_set(MY_ADDRESS);
-              } catch (error) {
-                  output(error);
-              }
-      
-              transaction.tx_json.TransactionType = 'SetRegularKey';
-              transaction.tx_json.RegularKey = REGULAR_KEY;
+    output("contructing transaction...");
+
+    remote.connect(function() {
+       // remote connected
+       // see the API Reference for available functions
+
+        var str;
+
+        remote.set_secret(MY_ADDRESS, MY_SECRET);
+
+        var transaction = remote.transaction();
+
+        try {
+            transaction.account_set(MY_ADDRESS);
+        } catch (error) {
+            output(error);
+        }
+
+        transaction.tx_json.TransactionType = 'SetRegularKey';
+        transaction.tx_json.RegularKey = REGULAR_KEY;
 
 
-              output("submiting transaction..."); //acknowledge of submission.
+        output("submiting transaction..."); //acknowledge of submission.
 
-              transaction.submit(function(err, res) {
-                  if (err) {
-                      str = JSON.stringify(err, undefined, 2);
-                  }
-                  if (res) {
-                      str = JSON.stringify(res, undefined, 2);
-                  }
-                  output(str);
-                  remote.disconnect();
-              }); 
-  
-        });
-    }
+        transaction.submit(function(err, res) {
+            if (err) {
+                str = JSON.stringify(err, undefined, 2);
+            }
+            if (res) {
+                str = JSON.stringify(res, undefined, 2);
+            }
+            output(str);
+            remote.disconnect();
+        }); 
+
+  });
     
 }
 
