@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Disable Masterkey</title>
+    <script src="file:///home/tanhanbin/ripple-lib/build/ripple-0.7.34-min.js"></script>
+    <script>
+
+// Loading ripple-lib in a webpage
+var Remote = ripple.Remote;
+var Seed = ripple.Seed;
+var Currency = ripple.Currency;
+var UInt160 = ripple.UInt160;
+
+var remote = new Remote({
+    // see the API Reference for available options
+    trusted:        false,
+    local_signing:  true,
+    local_fee:      true,
+    fee_cushion:     1.5,
+    servers: [
+        {
+            host:    's1.ripple.com'
+            , port:    443
+            , secure:  true
+        }
+    ]
+});
+
+function output(inp) {
+    document.body.appendChild(document.createElement('pre')).innerHTML = inp;
+}
+
+window.onload = function() {
+    var submitbutton = document.getElementById('submitbutton');
+    submitbutton.onclick = function() {submittoserver();};
+
+    var checkdisable = document.getElementById('disablemaster');
+    checkdisable.check = function() {diablemaster();};
+}
+
+function submittoserver() {
+
+    var MY_ADDRESS = document.getElementById('accountaddress').value;
+    MY_ADDRESS = MY_ADDRESS.trim();
+    var MY_SECRET = document.getElementById('accountsecret').value;
+    MY_SECRET = MY_SECRET.trim();
+
+
+    remote.connect(function() {
+        // remote connected
+
+        // see the API Reference for available functions
+
+
+        if (!Seed.from_json(MY_SECRET).is_valid()) {
+            output("Error: Secret invalid");
+        }
+/*
+        if (!Currency.from_json(c_code).is_valid()) {
+            output("Error: Currency code invalid");
+        }
+
+        if (!UInt160.is_valid(ISSUER_ADDRESS)) {
+            output("Error: Issuer address invalid");
+        }
+*/
+        remote.set_secret(MY_ADDRESS, MY_SECRET);
+
+        var transaction = remote.transaction();
+
+        try {
+            transaction.account_set(MY_ADDRESS);
+        } catch (error) {
+            output(error);
+        }
+
+//	transaction.tx_json.TransactionType  = 'AccountSet'
+
+        if (document.getElementById('disablemaster').checked) {
+            transaction.tx_json.SetFlag = 4;
+        } else {
+            transaction.tx_json.ClearFlag = 4;
+        }
+
+        transaction.submit(function(err, res) {
+            if (err) {
+                str = JSON.stringify(err, undefined, 2);
+            }
+            if (res) {
+                str = JSON.stringify(res, undefined, 2);
+            }
+            output(str);
+            remote.disconnect();
+        });
+
+    });
+}
+
+    </script>
+  </head>
+  <body>
+    <h1>Set Flag - Disable Masterkey</h1>
+    Account address:
+    <input id="accountaddress" type=text
+           value="rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh" size=40><br>
+    Account secret:
+    <input id="accountsecret" type=text
+           value="snoPBrXtMeMyMHUVTgbuqAfg1SUTb" size=40><br>
+
+    <input id="disablemaster" type=checkbox unchecked>Disable use of Masterkey. (RegularKey must be set). <br>
+    <input id="enablemaster" type=checkbox checked>Enable use of Masterkey. <br>
+
+    <button id="submitbutton">Submit</button>
+  </body>
+</html>
+
