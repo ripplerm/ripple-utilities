@@ -21,3 +21,7 @@ Ripple utilities
 * [Set trust line quality](http://ripplerm.github.io/ripple-utilities/settrustlinequality.html)
 * [Delete trust line](http://ripplerm.github.io/ripple-utilities/deletetrustline.html)
 
+------------------------------------------------
+
+* [Retrieve Memos](http://ripplerm.github.io/ripple-utilities/retrievememos.html)
+
