@@ -23,5 +23,7 @@ Ripple utilities
 
 ------------------------------------------------
 
+* [Send with Memos](http://ripplerm.github.io/ripple-utilities/sendmemos.html)
 * [Retrieve Memos](http://ripplerm.github.io/ripple-utilities/retrievememos.html)
+
 
