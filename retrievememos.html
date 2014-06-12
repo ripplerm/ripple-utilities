@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Retrieve Memos</title>
+    <script src="http://cdn.jsdelivr.net/ripple/0.7.30/ripple-lib-min.js"></script>
+    <script>
+
+// Loading ripple-lib in a webpage
+var Remote = ripple.Remote;
+var Utils = ripple.utils;
+
+var remote = new Remote({
+    // see the API Reference for available options
+    trusted:        false,
+    local_signing:  true,
+    local_fee:      true,
+    fee_cushion:     1.5,
+    max_fee:          20,
+    servers: [
+        {
+            host:    's1.ripple.com'
+            , port:    443
+            , secure:  true
+        }
+    ]
+});
+
+function output(inp) {
+    document.body.appendChild(document.createElement('pre')).innerHTML = inp;
+}
+
+window.onload = function() {
+    var submitbutton = document.getElementById('submitbutton');
+    submitbutton.onclick = function() {submittoserver();};
+}
+
+function submittoserver() {
+
+    var TX_HASH = document.getElementById('txhash').value;
+
+    output("connecting to server...");
+
+    remote.connect(function() {
+	    output('connected to Ripple-Network.')
+
+  	  var request = remote.request_tx(TX_HASH);
+	  
+  	  request.callback(function(err, res) {  
+
+            if (err) {
+              output(err.remote.error_message); 
+            }
+
+            if (res) {
+              if (res.Memos) {
+                 output('Sender: ' + res.Account);
+                 output('Recipient: ' + res.Destination);
+                 var memos = res.Memos;
+                 for (var memo in memos) {
+                   var mType = Utils.hexToString(memos[memo].Memo.MemoType);
+                   var mData = Utils.hexToString(memos[memo].Memo.MemoData);
+                   output('MemoType: ' + mType); 
+                   output('MemoData: ' + mData); 
+                 }
+              } else {
+                 output('No memos in this transaction.');
+              }   
+            }  
+
+  	    remote.disconnect();
+	    });
+	    
+	    request.request();
+
+    });
+}
+
+    </script>
+  </head>
+  <body>
+    <h1>Retrieve Memos from a Transaction</h1>
+    Tx hash:
+    <input id="txhash" type=text
+           value="56B00CC12D6ECC7CEC35E1A9A18F86C2F262278030746696DA7A2B52C2B2616F" size=80><br>
+    <button id="submitbutton">Retrieve</button><br><br>
+
+  </body>
+</html>
