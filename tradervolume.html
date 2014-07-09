@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Market Traders</title>
+    <script src="ripple-0.7.35-min.js"></script>
+    <script>
+
+
+// =========== configuration & Global variables =======================
+
+var TRADER = ""; 
+
+var RANGE = '7d';
+var START_TIME = ""; //e.g. "2014-06-09T20:53:30+00:00"
+
+var LIMIT = 10;  //Top traders to be listed out.
+var LIST_TOP = true;
+
+var ISSUERS = 
+   {
+      XRP: "",
+      RippleChina: "razqQKzJRdB4UxFPWf5NEpEG3WMkmwgcXA",
+      RippleCN: "rnuF96W4SZoCJmbHYBFoJZpR8eCaxNvekK",
+      BitStamp: "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+      SnapSwap: "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q",
+      JustCoin: "rJHygWcTLVpSXkowott6kzgZU6viQSVYM1",
+      TheRockTrading: "rLEsXccBGNR3UPuPu2hUXPjziKC3qKSBun",
+      DividendRippler: "rfYv1TXnwgDDK4WQNbFALykYuEBnrR4pDX",
+      RippleSingapore: "r9Dr5xwkeLegBeXq6ujinjSBLQzQ1zQGjH",
+      NoFiatCoin: "rPKSvQ1qFAksr7hzk2wC2xtqSqFbxP3wvg",
+      Coinex: "rsP3mgGb2tcYUrxiLFiHJiQXhsziegtwBc",
+      RippleTradeJapan: "rMAz5ZnK73nyNUL4foAvaxdreczCkG3vA6"
+    }
+
+var BASE_CURRENCY = 'USD';
+var BASE_ISSUER = ISSUERS['BitStamp'];
+
+var TRADE_CURRENCY = 'XRP';
+var TRADE_ISSUER = ISSUERS['XRP'];
+
+
+// ========== global varialbes ===============================
+
+
+var GATEWAYS = 
+   {
+      rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B: "BitStamp",
+      rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q: "SnapSwap",
+      razqQKzJRdB4UxFPWf5NEpEG3WMkmwgcXA: "RippleChina",
+      rnuF96W4SZoCJmbHYBFoJZpR8eCaxNvekK: "RippleCN",
+      rJHygWcTLVpSXkowott6kzgZU6viQSVYM1: "JustCoin",
+      rLEsXccBGNR3UPuPu2hUXPjziKC3qKSBun: "TheRockTrading",
+      r9Dr5xwkeLegBeXq6ujinjSBLQzQ1zQGjH: "RippleSingapore",
+      rfYv1TXnwgDDK4WQNbFALykYuEBnrR4pDX: "DividendRippler",
+      rMAz5ZnK73nyNUL4foAvaxdreczCkG3vA6: "RippleTradeJapan",
+      rNPRNzBB92BVpAhhZr4iXDTveCgV5Pofm9: "RippleIsrael",
+      r3ADD8kXSUKHd6zTCKfnKT3zV9EZHjzp1S: "RippleUnion",
+      rPKSvQ1qFAksr7hzk2wC2xtqSqFbxP3wvg: "NoFiatCoin",
+      rKiCet8SdvWxPXnAgYarFUXMh1zCPz432Y: "RippleFox",
+      rsP3mgGb2tcYUrxiLFiHJiQXhsziegtwBc: "Coinex",
+      rG6FZ31hDHN1K5Dkbma3PSB5uVCuVVRzfn: "Bitso",
+    }
+
+// ========================================================
+
+
+function get_startTime(range) {
+  var offset = 1;
+  switch (range) {
+    case '24hr':
+      offset = 1;
+      break;
+    case '3d':
+      offset = 3;
+      break;
+    case '7d':
+      offset = 7;
+      break;
+    default:
+      offset = 1;
+  }
+  var start_time = new Date;
+  start_time.setDate(start_time.getDate() - offset); 
+
+  //START_TIME = start_time.toISOString();
+  return start_time.toISOString().slice(0,16);
+}
+
+
+
+function traders_stats (traders) {
+      if (!traders || traders.length == 0) {
+        output('empty result from RippleChart...');
+      }
+  
+      traders.sort(function(a, b){ 
+        return b.baseVolume - a.baseVolume
+      });
+  
+      var total_volume = 0;
+      var trader_volume = 0;
+      var trader_volume_percentage = 0;
+
+      for (i = 0; i < traders.length; i++) {
+        total_volume += Number(traders[i].baseVolume);
+        if (traders[i].account == TRADER) {
+          trader_volume = traders[i].baseVolume;
+        }
+      }
+      output('Market Total Volume in ' + RANGE + ' = ' + total_volume + ' ' +BASE_CURRENCY);
+      
+      if (TRADER) {
+        trader_volume = trader_volume.toFixed(6);  
+        trader_percentage = trader_volume/total_volume*100;
+        trader_percentage = trader_percentage.toFixed(2);     
+        output('Volume from ' + TRADER + ': ' + trader_volume + ', ' + trader_percentage + '%.');
+        show_tradervolume(trader_volume, trader_percentage);
+      }
+    
+      if (LIST_TOP) {
+        output('-------------------------------------------------------------------');
+        output('Top ' + LIMIT + ' traders for ' + BASE_CURRENCY + '/' + TRADE_CURRENCY + ' market: 	Base Volume	percentage');              
+        for (i = 0; i < LIMIT && i < traders.length; i++) {
+          var account = traders[i].account;
+          var base_volume = traders[i].baseVolume;
+          var percentage = base_volume / total_volume * 100;
+  
+          base_volume = base_volume.toFixed(6);
+          percentage = percentage.toFixed(2);
+  
+          var count = traders[i].count;
+          output(account + ': 	' + base_volume + ', 	' + percentage + '%');
+        } 
+      }  
+      output('===================================================================');   
+}
+
+function get_market_traders () {
+  output('requsting data from RippleCharts...');
+
+  var BODY = { 
+        base: {
+               currency: BASE_CURRENCY,
+               issuer: BASE_ISSUER
+               },
+        counter : {
+                   currency: TRADE_CURRENCY,
+                   issuer: TRADE_ISSUER
+                   }, 
+        startTime: START_TIME,
+        period : RANGE,    //use 'period' instead of 'range'.
+        format: "json"
+        };
+
+  var Request = new XMLHttpRequest();
+
+  Request.open('POST', 'http://api.ripplecharts.com/api/markettraders');
+  Request.setRequestHeader('Content-Type', 'application/json');
+
+  Request.onreadystatechange = function () {
+    if (this.readyState === 4) {
+      var body = JSON.parse(this.responseText);
+      //output('Body: ' + body); 
+
+      if (body.error) {
+        output('rippledata error: ' + body.error);
+      } else {
+        var start_time = body.startTime;
+        var end_time = body.endTime;
+        var traders = body.results;  
+        output('Rage: ' + start_time + ' ~ ' + end_time);
+        
+        traders_stats(traders);
+      } 
+      
+    } 
+  }
+
+  Request.send(JSON.stringify(BODY));
+}
+
+
+// ============= main =======================================
+
+function output(inp) {
+    document.body.appendChild(document.createElement('pre')).innerHTML = inp;
+}
+
+window.onload = function() {
+    var submitbutton = document.getElementById('submitbutton');
+    submitbutton.onclick = function() {start();};
+
+    var basegateway = document.getElementById('base_gateway');
+    basegateway.onchange = function() {get_base_issuer();};
+
+    var tradegateway = document.getElementById('trade_gateway');
+    tradegateway.onchange = function() {get_trade_issuer();};
+
+    var baseissuer = document.getElementById('base_issuer');
+    var tradeissuer = document.getElementById('trade_issuer');
+    baseissuer.onclick = function() {baseissuer.value=""; basegateway.value="";};
+    tradeissuer.onclick = function() {tradeissuer.value=""; tradegateway.value="";};
+
+    load_gateway_list(basegateway);
+    load_gateway_list(tradegateway);
+    basegateway.value = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+
+    document.getElementById('starttime').value = get_startTime(RANGE);
+}
+
+function load_gateway_list (dropdownlist) {
+  for (var address in GATEWAYS) {
+    var option = document.createElement("option");
+    option.value = address;
+    option.text = GATEWAYS[address];
+    dropdownlist.add(option);
+  }
+}
+
+function get_base_issuer () {
+  document.getElementById('base_issuer').value = document.getElementById("base_gateway").value;
+}
+
+function get_trade_issuer () {
+  document.getElementById('trade_issuer').value = document.getElementById("trade_gateway").value;
+}
+
+function show_tradervolume(volume, percentage) {
+   document.getElementById('tradervolume').innerHTML = '<strong>  ' + volume + ' ' + BASE_CURRENCY + ' = ' + percentage + '% of Total Volume.</strong>';
+}
+
+function set_params() {
+  TRADER = document.getElementById('my_address').value;
+  BASE_CURRENCY = document.getElementById('base_currency').value;
+  BASE_ISSUER = document.getElementById('base_issuer').value;
+  TRADE_CURRENCY = document.getElementById('trade_currency').value;
+  TRADE_ISSUER = document.getElementById('trade_issuer').value;
+
+  if (document.getElementById('24h').checked) {RANGE = '24h';}
+  else if (document.getElementById('3d').checked) {RANGE = '3d';}
+  else if (document.getElementById('7d').checked) {RANGE = '7d';}
+
+  LIST_TOP = (document.getElementById('listtop').checked) ? true : false;
+  document.getElementById('tradervolume').innerHTML = '';
+
+  var start_time = document.getElementById('starttime').value;
+  START_TIME = start_time? start_time : get_startTime(RANGE);
+  document.getElementById('starttime').value = START_TIME;
+}
+
+function start() {
+  set_params();
+  get_market_traders();
+}
+
+    </script>
+  </head>
+  <body>
+    <h1>Trading Volume</h1>   
+    * data from <a href="http://www.ripplecharts.com/#/active_accounts">RippleCharts.com</a>
+    (see documentation on <a href="http://docs.rippledataapi.apiary.io/">ripple-data API</a>)<br><br>
+
+    Base Currency:<br>
+    Code:<input id="base_currency" type=text value="USD" size=3> 
+    Issuer:<input id="base_issuer" type=text value="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B" size=45>
+    <select id="base_gateway"><option value=""></option></select><br><br>
+
+    Counter Currency:<br>
+    Code:<input id="trade_currency" type=text value="XRP" size=3> 
+    Issuer:<input id="trade_issuer" type=text value="" size=45>     
+    <select id="trade_gateway"><option></option></select><br><br>
+
+    Range: 
+    <input id="24h" type=radio name="range" unchecked>24h. 
+    <input id="3d" type=radio name="range" unchecked>3d. 
+    <input id="7d" type=radio name="range" checked>7d. <br>
+    StartTime:
+    <input id="starttime" type=datetime-local value=""> <br><br>
+    <strong>Trading Account: </strong>
+    <input id="my_address" type=text value="rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh" size=45>  <br><br>
+
+    <button id="submitbutton">Submit</button> <input id="listtop" type=checkbox unchecked>List Top Traders.<br><br>
+    <strong>Volume from the Trading Account = </strong><label id="tradervolume" type=text></label><br>
+    =============================================================
+  </body>
+</html>
