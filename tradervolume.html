@@ -137,7 +137,7 @@ function traders_stats (traders) {
 }
 
 function get_market_traders () {
-  output('requsting data from RippleCharts...');
+  output('requesting data from RippleCharts...');
 
   var BODY = { 
         base: {
@@ -169,7 +169,7 @@ function get_market_traders () {
         var start_time = body.startTime;
         var end_time = body.endTime;
         var traders = body.results;  
-        output('Rage: ' + start_time + ' ~ ' + end_time);
+        output('Range: ' + start_time + ' ~ ' + end_time);
         
         traders_stats(traders);
       } 
@@ -184,7 +184,12 @@ function get_market_traders () {
 // ============= main =======================================
 
 function output(inp) {
-    document.body.appendChild(document.createElement('pre')).innerHTML = inp;
+    document.getElementById('consolelog').appendChild(document.createElement('pre')).innerHTML = inp;
+}
+
+function clear_output() {
+  document.getElementById('consolelog').innerHTML = '';
+  document.getElementById('xmm_share').innerHTML = '';
 }
 
 window.onload = function() {
@@ -242,7 +247,6 @@ function set_params() {
   else if (document.getElementById('7d').checked) {RANGE = '7d';}
 
   LIST_TOP = (document.getElementById('listtop').checked) ? true : false;
-  document.getElementById('tradervolume').innerHTML = '';
 
   var start_time = document.getElementById('starttime').value;
   START_TIME = start_time? start_time : get_startTime(RANGE);
@@ -250,6 +254,7 @@ function set_params() {
 }
 
 function start() {
+  clear_output();
   set_params();
   get_market_traders();
 }
@@ -283,5 +288,7 @@ function start() {
     <button id="submitbutton">Submit</button> <input id="listtop" type=checkbox unchecked>List Top Traders.<br><br>
     <strong>Volume from the Trading Account = </strong><label id="tradervolume" type=text></label><br>
     =============================================================
+    <div id='consolelog'> </div>
+    
   </body>
 </html>
