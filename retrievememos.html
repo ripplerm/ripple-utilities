@@ -61,7 +61,8 @@ function submittoserver() {
                    var mType = Utils.hexToString(memos[memo].Memo.MemoType);
                    var mData = Utils.hexToString(memos[memo].Memo.MemoData);
                    output('MemoType: ' + mType); 
-                   output('MemoData: ' + mData); 
+                   //output('MemoData: ' + mData); 
+                   output('MemoData: ' + JSON.stringify(JSON.parse(mData), null, 2));  //structured for pretty output.
                  }
               } else {
                  output('No memos in this transaction.');
