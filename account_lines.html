@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Account Lines</title>
+    <script src="ripple-0.7.35-min.js"></script>
+    <script>
+
+var Remote = ripple.Remote;
+var Request = ripple.Request;
+var UInt160 = ripple.UInt160;
+
+// ========== global varialbes ===============================
+
+var MY_ADDRESS, LEDGER; 
+
+var LINES = [];
+var BALANCE = {};
+var CURRENCY_LINES = {};
+var CURRENCY_FILTER = '';
+var IGNORE_ZERO = false;
+
+var remote = new Remote({
+  trusted:        false,
+  local_signing:  true,
+  local_fee:      true,
+  fee_cushion:     1.5,
+  max_fee:          50,
+  max_listeners:    30,
+  servers: [
+    {
+        host:    's1.ripple.com'
+      , port:    443
+      , secure:  true
+    },
+    {
+        host:    's-east.ripple.com'
+      , port:    443
+      , secure:  true
+    },
+    {
+        host:    's-west.ripple.com'
+      , port:    443
+      , secure:  true
+    }
+  ]
+});
+
+// ============ functions ===================================
+
+function get_lines (account, ledger) {
+
+    if (!UInt160.is_valid(MY_ADDRESS)) {
+        output("Error: invalid address");
+	      return;
+    }
+
+    if (!ledger) {
+      output('requesting ledger info...')
+      remote.requestLedgerHash(function (err, res){
+        if (err) { 
+          output('Fail to get ledgerhash.');
+        }
+        if (res) {
+          output('Last_Closed_Ledger: index = ' + res.ledger_index + ', hash = ' + res.ledger_hash);
+          show_ledger_index (res.ledger_index);
+          get_lines (account, res.ledger_hash);
+        }
+      });
+      return;
+    }
+
+    LINES = [];
+
+    output('requesting account_lines...');
+    var request = new Request(remote, 'account_lines');
+    request.message.account = account;
+    if (typeof ledger == 'number') request.message.ledger_index = ledger;
+    if (typeof ledger == 'string') request.message.ledger_hash = ledger;
+
+    request.callback(function handle_message(err, res) {
+        if (err) {
+          output('Error requesting account_lines.'); 
+          output(err); 
+          return;
+        } 
+        if (res) {
+           var lines = res.lines;
+           var account = res.account;
+           LINES = LINES.concat(lines);
+
+           if (res.marker) {
+               show_lines_number (LINES.length, false);
+               this.message.marker = res.marker;
+               this.requested = false;
+               this.callback(handle_message);
+               return;   
+           }
+
+           output('Total Lines = ' + LINES.length);
+           show_lines_number (LINES.length, true);
+            
+           balance_stats();
+           show_balance();
+           list_lines();
+        }
+    });
+
+}
+
+function balance_stats() {
+   BALANCE = {};
+   CURRENCY_LINES = {};
+
+   for (var i=0; i < LINES.length; i++) {
+     var currency = LINES[i].currency;
+     var balance = parseFloat(LINES[i].balance);
+     if (!BALANCE.hasOwnProperty(currency)) BALANCE[currency] = 0;
+     if (!CURRENCY_LINES.hasOwnProperty(currency)) CURRENCY_LINES[currency] = 0;
+     BALANCE[currency] += balance;
+     CURRENCY_LINES[currency]++;
+   }
+}
+
+function show_balance () {
+   output('----------- Balance Stats -------------------');
+   for (var currency in BALANCE) {
+     if (IGNORE_ZERO && BALANCE[currency] == 0) continue;
+     output(currency + ': ' + BALANCE[currency] + '  lines: ' + CURRENCY_LINES[currency]);
+   }
+   output('----------------- List ---------------------------');
+}
+
+function list_lines() {
+    var newlines = LINES;
+    if (CURRENCY_FILTER) {
+        newlines = LINES.filter(function(element){ return (element.currency == CURRENCY_FILTER) });
+    }
+
+    newlines.sort(function(a,b) { return parseFloat(a.balance) - parseFloat(b.balance) } );   
+    var line_number = 0;
+    for (i = 0; i < newlines.length; i++) {
+        if (IGNORE_ZERO && newlines[i].balance == 0) continue;
+        output(newlines[i].account + ' ' + newlines[i].currency + ' ' + newlines[i].balance)
+        line_number++;
+    }
+    show_filter_number (line_number);
+}
+
+// ----------------------- input output ---------------------------------
+
+function output(inp) {
+    document.getElementById('consolelog').appendChild(document.createElement('pre')).innerHTML = inp;
+}
+
+function clear_output() {
+  document.getElementById('consolelog').innerHTML = '';
+  document.getElementById('filter_number').innerHTML = '';
+}
+
+function show_lines_number (total, finished) {
+  finished = finished ? '' : '++,  loading......';
+  document.getElementById('lines_number').innerHTML = total + finished;  
+}
+
+function show_filter_number (total) {
+  document.getElementById('filter_number').innerHTML = total;  
+}
+
+function show_ledger_index (index) {
+  document.getElementById('ledger_index').value = index;  
+}
+
+function show_lastclosed_ledger (index) {
+  document.getElementById('lastclosed_ledger').innerHTML = index;  
+}
+
+function set_params() {
+  MY_ADDRESS = document.getElementById('my_address').value.trim();
+  LEDGER = Number(document.getElementById('ledger_index').value);
+  CURRENCY_FILTER = document.getElementById('filter_currency').value.trim();
+  IGNORE_ZERO = document.getElementById('ignore_zero').checked;
+}
+
+
+
+// ====================== main =============================================
+
+window.onload = function() {
+    var filterbutton = document.getElementById('filterbutton');
+    var submitbutton = document.getElementById('submitbutton');
+
+    filterbutton.onclick = function() {filtering();};
+    submitbutton.onclick = function() {start();};
+
+    output('connecting...');
+    remote.connect(function () {
+      clear_output();
+      output('connected to Ripple Network.');
+      remote.on('ledger_closed', function (message) {
+        show_lastclosed_ledger(message.ledger_index);
+      })
+    });
+}
+
+function filtering () {
+  CURRENCY_FILTER = document.getElementById('filter_currency').value.trim();
+  clear_output();
+  set_params();
+  show_balance();
+  list_lines ();
+}
+
+function start() {
+  clear_output();
+  set_params();
+  get_lines(MY_ADDRESS, LEDGER);
+}
+
+// ================== END OF SCRIPT ======================================
+
+  </script>
+  </head>
+  <body>
+    <h1>Request Account Lines</h1>   
+    <strong>Account: </strong>
+    <input id="my_address" type=text value="rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh" size=50>  <br><br>
+    <strong>Ledger: </strong>
+    <input id="ledger_index" type=text value="" size=10> (Sequence of Ledger, a.k.a ledger_index)<br>
+    Last_closed: <label id="lastclosed_ledger" type=text></label><br><br>
+
+    <button id="submitbutton">Request</button><br><br>
+
+    <strong>Total Number of Trustlines = <label id="lines_number" type=text></label> </strong><br><br>
+    Currency Filter:<input id="filter_currency" type=text value="" size=5> 
+    <button id="filterbutton">Filter</button><br>
+    Filtered lines = <label id="filter_number" type=text></label> <br>
+
+    <input id="ignore_zero" type=checkbox unchecked>ignore zero balances.<br><br>
+    =============================================================
+    <div id='consolelog'> </div>
+  </body>
+</html>
